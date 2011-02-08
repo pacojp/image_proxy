@@ -31,7 +31,7 @@ class Server
     Conf.instance.load(options)
     if Conf.instance.use_cache
       cache_home = Conf.instance.home + 'cache/'
-      @cache = FileCache.new("images", cache_home, 10, 6)
+      @cache = FileCache.new("images", cache_home, 60 * 60 * 24 * 7, 6)
     end
   end
 
@@ -117,8 +117,13 @@ class Image
     tf.close
 
     new_path = path + "img.jpg"
-    img = Imlib2::Image.load(path)
-    img.save(new_path)
+    
+    if path =~ /.gif$/i
+      `/usr/bin/imlib2_conv #{path} #{new_path}`
+      img = Imlib2::Image.load(new_path)
+    else
+      img = Imlib2::Image.load(path)
+    end
 
     options.each do |opt|
       case opt
@@ -161,3 +166,4 @@ class Image
     end
   end
 end
+

@@ -107,6 +107,7 @@ class Image
       self.load!
       self.convert!
     rescue => e
+      puts e.message
       self.data = Conf.instance.error_image
       self.content_type = "image/jpeg"
     end

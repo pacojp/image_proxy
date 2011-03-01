@@ -104,8 +104,8 @@ class Image
 
   def process!
     begin
-      self.load!
-      self.convert!
+      self.load_inner
+      self.convert_inner
     rescue => e
       puts e.message
       self.data = Conf.instance.error_image
@@ -115,7 +115,7 @@ class Image
 
   protected
 
-  def load!
+  def load_inner
     data = open(@url).read
     raise 'data null' unless data
     raise 'data size error ' if data.size < 1
@@ -123,7 +123,7 @@ class Image
     nil
   end
 
-  def convert!
+  def convert_inner
     tf = Tempfile.new('image',Conf.instance.tmp_folder)
     path = tf.path
     tf.write(self.ori_data)

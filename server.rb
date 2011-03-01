@@ -11,7 +11,7 @@ require 'imlib2'
 class Conf
   include Singleton
 
-  attr_accessor :use_cache,:home,:tmp_folder
+  attr_accessor :use_cache,:home,:tmp_folder,:error_image
 
   def load(options)
     @use_cache = false
@@ -20,6 +20,7 @@ class Conf
     end
     @home = File.expand_path(File.dirname(__FILE__)) + '/'
     @tmp_folder = @home + 'tmp/'
+    File.open(@home + '/dat/error.jpg', "rb") {|f| @error_image = f.read }
   end
 end
 
@@ -41,7 +42,7 @@ class Server
   def call(env)
     uri = env["REQUEST_URI"]
     url = uri.clone
-    puts url
+    #puts url
     url = $1 if url =~ /^\/(.*+)$/
     options = []
 
@@ -50,8 +51,8 @@ class Server
       options = $1.gsub(/%7c/i,'|').split('|')
     end
 
-    puts "url=#{url}"
-    puts "env[\"REQUEST_URI\"]=#{env["REQUEST_URI"]}"
+    #puts "url=#{url}"
+    #puts "env[\"REQUEST_URI\"]=#{env["REQUEST_URI"]}"
 
     if url =~ /^(.*?)\/conv2\.(jpe?g|gif|png)$/i
       url = $1
@@ -68,17 +69,17 @@ class Server
         if @cache
           hash = Digest::MD5.hexdigest(uri)
           unless img = @cache.get(hash)
-            puts "cache not hit"
+            #puts "cache not hit"
             img = get_data(url,options)
             @cache.set(hash,img)
           end
         else
           img = get_data(url,options)
         end
-        puts "response=#{img.content_type}"
+        #puts "response=#{img.content_type}"
         [200, {"Content-Type" => img.content_type}, [img.data]]
       rescue => e
-        puts e.message
+        #puts e.message
         [500, {"Content-Type" => "text/plain"}, ["process error(#{e.message})"+e.backtrace.join("\n")]]
       end
     else
@@ -88,8 +89,7 @@ class Server
 
   def get_data(url,options)
     img = Image.new(url,options)
-    img.load!
-    img.convert!
+    img.process!
     return img
   end
 end
@@ -101,6 +101,18 @@ class Image
     @url = url
     @options=options
   end
+
+  def process!
+    begin
+      self.load!
+      self.convert!
+    rescue => e
+      self.data = Conf.instance.error_image
+      self.content_type = "image/jpeg"
+    end
+  end
+
+  protected
 
   def load!
     data = open(@url).read

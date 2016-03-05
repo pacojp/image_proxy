@@ -37,7 +37,10 @@ class Server
   end
 
   #
-  # TODO
+  # ex
+  # http://thisserver.com/100x100/http://somedomain.com/1.jpg
+  # # no_imageな画像ではなく404で返して欲しい
+  # http://thisserver.com/100x100|with404/http://somedomain.com/1.jpg
   #
   def call(env)
     uri = env["REQUEST_URI"]
@@ -77,7 +80,11 @@ class Server
           img = get_data(url,options)
         end
         #puts "response=#{img.content_type}"
-        [200, {"Content-Type" => img.content_type}, [img.data]]
+        if img.data
+          [200, {"Content-Type" => img.content_type}, [img.data]]
+        else
+          [404, {"Content-Type" => "text/plain"}, ["image not found at #{url}"]]
+        end
       rescue => e
         #puts e.message
         [500, {"Content-Type" => "text/plain"}, ["process error(#{e.message})"+e.backtrace.join("\n")]]
@@ -107,9 +114,10 @@ class Image
       self.load_inner
       self.convert_inner
     rescue => e
-      puts e.message
-      self.data = Conf.instance.error_image
-      self.content_type = "image/jpeg"
+      unless @options.include? "with404"
+        self.data = Conf.instance.error_image
+        self.content_type = "image/jpeg"
+      end
     end
   end
 
